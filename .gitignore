@@ -1,0 +1,41 @@
+# .NET Core
+bin/
+obj/
+out/
+
+# User-specific files
+.idea/
+.vs/
+.vscode/
+
+# ASP.NET Core
+wwwroot/
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+
+# ASP.NET Core SignalR
+signalr/
+
+# NPM or other frontend related
+node_modules/
+bower_components/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# JetBrains Rider
+.idea/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# macOS
+*.DS_Store
+
+# Ignore the debug folder
+debug/
