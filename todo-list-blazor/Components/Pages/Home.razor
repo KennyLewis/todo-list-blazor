@@ -1,4 +1,62 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 
 <PageTitle>Todo List</PageTitle>
 
+<h1>Todo List</h1>
+
+<input id="todoInput" type="text" name="todoInput" value="" />
+
+@foreach (var todoItem in todoItems)
+{
+    var spanCss = todoItem.Completed ? "text-decoration-line-through" : "";
+
+    <div class="form-check">
+        <input class="form-check-input"
+               type="checkbox"
+               checked="@todoItem.Completed"
+               @onclick="() => ToggleCompletedStatus(todoItem.Id)" />
+        <span class="form-check-label @spanCss">@todoItem.Label</span>
+    </div>
+}
+
+@code {
+    private List<TodoItem> todoItems = new List<TodoItem>();
+
+    protected override void OnInitialized()
+    {
+        var tempData = new List<TodoItem>
+        {
+            new TodoItem
+            {
+                Id = Guid.NewGuid(),
+                Label = "Todo 1",
+                Completed = true
+            },
+            new TodoItem
+            {
+                Id = Guid.NewGuid(),
+                Label = "Todo 2",
+                Completed = false
+            }
+        };
+        todoItems = tempData;
+    }
+
+    private void ToggleCompletedStatus(Guid id)
+    {
+        var existingTodoItem = todoItems.First(x => x.Id == id);
+        if (existingTodoItem != null)
+        {
+            existingTodoItem.Completed = !existingTodoItem.Completed;
+            // StateHasChanged(); // Triggers a re-render after the state change
+        }
+    }
+
+    public class TodoItem
+    {
+        public Guid Id { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public bool Completed { get; set; }
+    }
+}
