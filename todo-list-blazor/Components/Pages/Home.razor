@@ -1,62 +1,125 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.ComponentModel.DataAnnotations
 @rendermode InteractiveServer
+@inject ProtectedLocalStorage ProtectedLocalStorage
+
 
 <PageTitle>Todo List</PageTitle>
 
-<h1>Todo List</h1>
+<div class="container" style="width: 40rem">
+	<div class="card">
+		<div class="card-header">
+			Todo List
+		</div>
+		<div class="card-body">
+			<EditForm Model="todoLabel" OnValidSubmit="AddTodoItem">
+				<DataAnnotationsValidator />
+				<ValidationSummary />
+				<div class="input-group mb-3">
+					<InputText class="form-control" id="todoInput" type="text" name="todoInput" @bind-value="todoLabel" />
+					<button class="btn btn-outline-primary" id="formSubmitButton" type="submit">Add</button>
+				</div>
+			</EditForm>
+			<table class="table table-sm">
+				<thead>
+					<tr class="text-center">
+						<th>Completed</th>
+						<th>Item</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var todoItem in todoItems)
+					{
+						var spanCss = todoItem.Completed ? "text-decoration-line-through" : "";
 
-<input id="todoInput" type="text" name="todoInput" value="" />
+						<tr class="text-center">
+							<td>
+								<input class="form-check-input"
+									   type="checkbox"
+									   checked="@todoItem.Completed"
+									   @onclick="() => ToggleCompletedStatus(todoItem.Id)" />
+							</td>
+							<td><p class="@spanCss">@todoItem.Label</p></td>
+							<td><button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteTodoItem(todoItem.Id)">Delete</button></td>
+						</tr>
+					}
+				</tbody>
+			</table>
 
-@foreach (var todoItem in todoItems)
-{
-    var spanCss = todoItem.Completed ? "text-decoration-line-through" : "";
 
-    <div class="form-check">
-        <input class="form-check-input"
-               type="checkbox"
-               checked="@todoItem.Completed"
-               @onclick="() => ToggleCompletedStatus(todoItem.Id)" />
-        <span class="form-check-label @spanCss">@todoItem.Label</span>
-    </div>
-}
+		</div>
+		<div class="card-footer"><button class="btn btn-sm btn-danger" @onclick="() => DeleteCompletedTodoItems()">Delete Completed Todo Items</button></div>
+	</div>
+</div>
 
 @code {
-    private List<TodoItem> todoItems = new List<TodoItem>();
+	private string todoLabel = string.Empty;
+	private List<TodoItem> todoItems = new List<TodoItem>();
 
-    protected override void OnInitialized()
-    {
-        var tempData = new List<TodoItem>
-        {
-            new TodoItem
-            {
-                Id = Guid.NewGuid(),
-                Label = "Todo 1",
-                Completed = true
-            },
-            new TodoItem
-            {
-                Id = Guid.NewGuid(),
-                Label = "Todo 2",
-                Completed = false
-            }
-        };
-        todoItems = tempData;
-    }
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			var localStorageTodos = await ProtectedLocalStorage.GetAsync<List<TodoItem>>("todos");
+			if (localStorageTodos.Success && localStorageTodos.Value is not null)
+			{
+				todoItems = localStorageTodos.Value;
+				StateHasChanged();
+			}
+		}
+	}
 
-    private void ToggleCompletedStatus(Guid id)
-    {
-        var existingTodoItem = todoItems.First(x => x.Id == id);
-        if (existingTodoItem != null)
-        {
-            existingTodoItem.Completed = !existingTodoItem.Completed;
-            // StateHasChanged(); // Triggers a re-render after the state change
-        }
-    }
+	private async Task AddTodoItem()
+	{
+		if (string.IsNullOrWhiteSpace(todoLabel))
+		{
+			return;
+		}
 
-    public class TodoItem
-    {
-        public Guid Id { get; set; }
-        public string Label { get; set; } = string.Empty;
-        public bool Completed { get; set; }
-    }
+		todoItems.Add(new TodoItem
+			{
+				Id = Guid.NewGuid(),
+				Label = todoLabel.Trim(),
+				Completed = false
+			});
+		todoLabel = string.Empty;
+		await UpdateLocalStorage();
+	}
+
+	private async Task ToggleCompletedStatus(Guid id)
+	{
+		var existingTodoItem = todoItems?.FirstOrDefault(x => x.Id == id);
+		if (existingTodoItem != null)
+		{
+			existingTodoItem.Completed = !existingTodoItem.Completed;
+			await UpdateLocalStorage();
+		}
+	}
+
+	private async Task DeleteTodoItem(Guid id)
+	{
+		todoItems = todoItems.Where(x => x.Id != id).ToList();
+		await UpdateLocalStorage();
+	}
+
+	private async Task DeleteCompletedTodoItems()
+	{
+		todoItems = todoItems.Where(x => !x.Completed).ToList();
+		await UpdateLocalStorage();
+		StateHasChanged();
+	}
+
+	private async Task UpdateLocalStorage()
+	{
+		await ProtectedLocalStorage.SetAsync("todos", todoItems);
+	}
+
+	public class TodoItem
+	{
+		public Guid Id { get; set; }
+		public string Label { get; set; } = string.Empty;
+		public bool Completed { get; set; }
+	}
 }
